@@ -9,6 +9,7 @@ must be written here (e.g. a dictionary for connected clients)
 """
 currentUsers = dict()
 help_msg = "hei"
+history = []
 
 
 class ClientHandler(SocketServer.BaseRequestHandler):
@@ -60,6 +61,14 @@ class ClientHandler(SocketServer.BaseRequestHandler):
         liste = currentUsers.keys().sort()
         self.connection.send(self.encode(HOST,'info',liste))
 
+    def sendMsg(self, msg, username):
+        melding = self.encode(username,'message',msg)
+        history.append(melding)
+        for user in currentUsers:
+            currentUsers[user].send(melding)
+
+
+
     def handle(self):
         """
         This method handles the connection between a client and the server.
@@ -75,12 +84,13 @@ class ClientHandler(SocketServer.BaseRequestHandler):
             if not loggedin:
                 username = self.login()
                 loggedin = True
-                currentUsers[username] = (self.ip, self.port)
+                currentUsers[username] = self
+                self.connection.send(self.encode(HOST,'history',history))
             received_string = self.connection.recv(4096)
             recmsg = json.dumps(received_string)
             req = recmsg['request']
             if req.startswith('msg '):
-                pass
+                self.sendMsg(recmsg['Content'], username)
             elif req == 'logout':
                 loggedin = False
                 del currentUsers[username]
