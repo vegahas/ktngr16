@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 import SocketServer
+import json
+import time
 
 """
 Variables and functions that must be used by all the ClientHandler objects
 must be written here (e.g. a dictionary for connected clients)
 """
+currentUsers = dict()
+
 
 class ClientHandler(SocketServer.BaseRequestHandler):
     """
@@ -13,6 +17,24 @@ class ClientHandler(SocketServer.BaseRequestHandler):
     only connected clients, and not the server itself. If you want to write
     logic for the server, you must write it outside this class
     """
+
+    def encode(self, s, r, c):
+        return json.loads({'timestamp':time.ctime(time.time()), 'sender':s, 'response':r, 'content':c})
+
+    def verifyUser(self, username):
+        pass
+
+    def login(self):
+        respons = self.encode(HOST, "info", "Please login (type [help] for information) ...")
+        received_string = self.connection.recv(4096)
+        x = json.dumps(received_string)
+        melding = x['request']
+        if melding.startswith('login '):
+            pass
+        elif melding.startswith('help'):
+            pass
+        else:
+            pass
 
     def handle(self):
         """
@@ -25,6 +47,13 @@ class ClientHandler(SocketServer.BaseRequestHandler):
         # Loop that listens for messages from the client
         while True:
             received_string = self.connection.recv(4096)
+            loggedin = False
+            if not loggedin:
+                self.login()
+                loggedin = True
+
+
+
 
             # TODO: Add handling of received payload from client
 
@@ -51,3 +80,6 @@ if __name__ == "__main__":
     # Set up and initiate the TCP server
     server = ThreadedTCPServer((HOST, PORT), ClientHandler)
     server.serve_forever()
+
+
+
