@@ -36,12 +36,13 @@ class ClientHandler(SocketServer.BaseRequestHandler):
     def recieve(self):
         try:
             package = self.connection.recv(4096)
-            return package
+            return json.loads(package)
         except:
             self.cancel()
 
     def cancel(self):
-        self.logout(self.username)
+        if self.username in currentUsers:
+            del currentUsers[self.username]
         self.connection.close()
         print "Connection closed ..."
 
@@ -58,11 +59,10 @@ class ClientHandler(SocketServer.BaseRequestHandler):
         self.send(HOST, "info", "Please login (type [help] for information) ...")
         while True:
             package = self.recieve()
-            recmsg = json.loads(package)
-            req = recmsg['request']
+            req = package['request']
             if req == 'login':
                 try:
-                    username = recmsg['content']
+                    username = package['content']
                     y = self.verifyUser(username)
                     if y == 1:
                         c= 'Login successfull ...'
@@ -96,8 +96,7 @@ class ClientHandler(SocketServer.BaseRequestHandler):
             currentUsers[user].send(username,'message',msg)
 
     def logout(self,username):
-        if username in currentUsers:
-            del currentUsers[username]
+        del currentUsers[username]
         self.send(HOST,'info','Logout successfull ...')
 
     def handle(self):
@@ -115,11 +114,10 @@ class ClientHandler(SocketServer.BaseRequestHandler):
                 loggedin = True
                 currentUsers[self.username] = self
                 self.send(HOST,'history',history)
-            received_string = self.recieve()
-            recmsg = json.loads(received_string)
-            req = recmsg['request']
+            package = self.recieve()
+            req = package['request']
             if req == 'msg':
-                self.sendMsg(recmsg['content'], self.username)
+                self.sendMsg(package['content'], self.username)
             elif req == 'logout':
                 loggedin = False
                 self.logout(self.username)
@@ -153,7 +151,7 @@ if __name__ == "__main__":
 
     No alterations are necessary
     """
-    HOST, PORT = '10.20.78.29', 9998
+    HOST, PORT = 'localhost', 9998
     print 'Server running...'
 
     # Set up and initiate the TCP server
