@@ -51,6 +51,7 @@ class ClientHandler(SocketServer.BaseRequestHandler):
             if not loggedin:
                 self.login()
                 loggedin = True
+                #legg bruker inn i påloggede enheter
 
 
 
