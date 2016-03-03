@@ -2,13 +2,18 @@
 import SocketServer
 import json
 import time
+import re
 
 """
 Variables and functions that must be used by all the ClientHandler objects
 must be written here (e.g. a dictionary for connected clients)
 """
 currentUsers = dict()
-help_msg = "hei"
+help_msg = "login <username> - log in with the given username\n" \
+           "logout           - log out\n" \
+           "msg <message>    - send message\n" \
+           "names            - list users in chat\n" \
+           "help             - view help text\n"
 history = []
 
 
@@ -21,19 +26,26 @@ class ClientHandler(SocketServer.BaseRequestHandler):
     """
 
     def encode(self, s, r, c):
-        return json.loads({'timestamp':time.ctime(time.time()), 'sender':s, 'response':r, 'content':c})
+        return json.dumps({'timestamp':time.ctime(time.time()), 'sender':s, 'response':r, 'content':c})
 
     def verifyUser(self, username):
+        if username in currentUsers:
+            return 2
+        if re.match(r'[A-Za-z0-9]{1,}', username):
+            return 1
         return False
 
     def login(self):
         respons = self.encode(HOST, "info", "Please login (type [help] for information) ...")
         self.connection.send(respons)
         while True:
-            a = self.connection.recv(4096)
-            recmsg = json.dumps(a)
+            try:
+                a = self.connection.recv(4096)
+                recmsg = json.loads(a)
+            except:
+                self.connection.close()
             req = recmsg['request']
-            if req.startswith('login '):
+            if req == 'login':
                 try:
                     username = recmsg['content']
                     y = self.verifyUser(username)
@@ -58,16 +70,19 @@ class ClientHandler(SocketServer.BaseRequestHandler):
             self.connection.send(self.encode(HOST,r,c))
 
     def names(self):
-        liste = currentUsers.keys().sort()
+        liste = currentUsers.keys()
+        liste.sort()
         self.connection.send(self.encode(HOST,'info',liste))
 
     def sendMsg(self, msg, username):
         melding = self.encode(username,'message',msg)
         history.append(melding)
         for user in currentUsers:
-            currentUsers[user].send(melding)
+            currentUsers[user].connection.send(melding)
 
-
+    def logout(self,username):
+        del currentUsers[username]
+        self.connection.send(self.encode(HOST,'info','Logout successfull ...'))
 
     def handle(self):
         """
@@ -86,15 +101,18 @@ class ClientHandler(SocketServer.BaseRequestHandler):
                 loggedin = True
                 currentUsers[username] = self
                 self.connection.send(self.encode(HOST,'history',history))
-            received_string = self.connection.recv(4096)
-            recmsg = json.dumps(received_string)
+            try:
+                received_string = self.connection.recv(4096)
+                recmsg = json.loads(received_string)
+            except:
+                self.logout(username)
+                self.connection.close()
             req = recmsg['request']
-            if req.startswith('msg '):
-                self.sendMsg(recmsg['Content'], username)
+            if req == 'msg':
+                self.sendMsg(recmsg['content'], username)
             elif req == 'logout':
                 loggedin = False
-                del currentUsers[username]
-                self.connection.send(self.encode(HOST,'info','Logout successfull ...'))
+                self.logout(username)
             elif req == 'help':
                 self.connection.send(self.encode(HOST,'info',help_msg))
             elif req == 'names':
@@ -125,7 +143,7 @@ if __name__ == "__main__":
 
     No alterations are necessary
     """
-    HOST, PORT = 'localhost', 9998
+    HOST, PORT = '10.20.78.29', 9998
     print 'Server running...'
 
     # Set up and initiate the TCP server
