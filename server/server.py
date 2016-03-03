@@ -8,6 +8,7 @@ Variables and functions that must be used by all the ClientHandler objects
 must be written here (e.g. a dictionary for connected clients)
 """
 currentUsers = dict()
+help_msg = "hei"
 
 
 class ClientHandler(SocketServer.BaseRequestHandler):
@@ -22,19 +23,34 @@ class ClientHandler(SocketServer.BaseRequestHandler):
         return json.loads({'timestamp':time.ctime(time.time()), 'sender':s, 'response':r, 'content':c})
 
     def verifyUser(self, username):
-        pass
+        return False
 
     def login(self):
         respons = self.encode(HOST, "info", "Please login (type [help] for information) ...")
-        received_string = self.connection.recv(4096)
-        x = json.dumps(received_string)
-        melding = x['request']
-        if melding.startswith('login '):
-            pass
-        elif melding.startswith('help'):
-            pass
-        else:
-            pass
+        while True:
+            recmsg = json.dumps(self.connection.recv(4096))
+            melding = recmsg['request']
+            if melding.startswith('login '):
+                try:
+                    x = melding.split(' ')
+                    username = x[1]
+                    if self.verifyUser(username):
+                        c= 'You are now logged in ...'
+                        self.connection.send(self.encode(HOST,'info',c))
+                        return username
+                    else:
+                        c= 'Invalid username, use alphanumerical characters ...'
+                        r = 'error'
+                except:
+                    c = 'Invalid syntax ...'
+                    r = 'error'
+            elif melding.startswith('help'):
+                c = help_msg
+                r = 'info'
+            else:
+                c = "Invalid command ..."
+                r = 'error'
+            self.connection.send(self.encode(HOST,r,c))
 
     def handle(self):
         """
@@ -43,15 +59,15 @@ class ClientHandler(SocketServer.BaseRequestHandler):
         self.ip = self.client_address[0]
         self.port = self.client_address[1]
         self.connection = self.request
+        loggedin = False
 
         # Loop that listens for messages from the client
         while True:
             received_string = self.connection.recv(4096)
-            loggedin = False
             if not loggedin:
-                self.login()
+                username = self.login()
                 loggedin = True
-                #legg bruker inn i påloggede enheter
+                currentUsers[username] = (self.ip, self.port)
 
 
 
