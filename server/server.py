@@ -27,8 +27,10 @@ class ClientHandler(SocketServer.BaseRequestHandler):
 
     def login(self):
         respons = self.encode(HOST, "info", "Please login (type [help] for information) ...")
+        self.connection.send(respons)
         while True:
-            recmsg = json.dumps(self.connection.recv(4096))
+            a = self.connection.recv(4096)
+            recmsg = json.dumps(a)
             melding = recmsg['request']
             if melding.startswith('login '):
                 try:
