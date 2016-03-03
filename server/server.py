@@ -31,28 +31,34 @@ class ClientHandler(SocketServer.BaseRequestHandler):
         while True:
             a = self.connection.recv(4096)
             recmsg = json.dumps(a)
-            melding = recmsg['request']
-            if melding.startswith('login '):
+            req = recmsg['request']
+            if req.startswith('login '):
                 try:
-                    x = melding.split(' ')
-                    username = x[1]
-                    if self.verifyUser(username):
-                        c= 'You are now logged in ...'
+                    username = recmsg['content']
+                    y = self.verifyUser(username)
+                    if y == 1:
+                        c= 'Login successfull ...'
                         self.connection.send(self.encode(HOST,'info',c))
                         return username
+                    elif y == 2:
+                        c = 'Username taken ...'
                     else:
                         c= 'Invalid username, use alphanumerical characters ...'
-                        r = 'error'
+                    r = 'error'
                 except:
                     c = 'Invalid syntax ...'
                     r = 'error'
-            elif melding.startswith('help'):
+            elif req == 'help':
                 c = help_msg
                 r = 'info'
             else:
                 c = "Invalid command ..."
                 r = 'error'
             self.connection.send(self.encode(HOST,r,c))
+
+    def names(self):
+        liste = currentUsers.keys().sort()
+        self.connection.send(self.encode(HOST,'info',liste))
 
     def handle(self):
         """
@@ -62,14 +68,30 @@ class ClientHandler(SocketServer.BaseRequestHandler):
         self.port = self.client_address[1]
         self.connection = self.request
         loggedin = False
+        username = ''
 
         # Loop that listens for messages from the client
         while True:
-            received_string = self.connection.recv(4096)
             if not loggedin:
                 username = self.login()
                 loggedin = True
                 currentUsers[username] = (self.ip, self.port)
+            received_string = self.connection.recv(4096)
+            recmsg = json.dumps(received_string)
+            req = recmsg['request']
+            if req.startswith('msg '):
+                pass
+            elif req == 'logout':
+                loggedin = False
+                del currentUsers[username]
+                self.connection.send(self.encode(HOST,'info','Logout successfull ...'))
+            elif req == 'help':
+                self.connection.send(self.encode(HOST,'info',help_msg))
+            elif req == 'names':
+                self.names()
+            else:
+                self.connection.send(self.encode(HOST,'error','Invalid command, use [help] for info ...'))
+
 
 
 
