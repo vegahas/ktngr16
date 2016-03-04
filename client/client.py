@@ -1,27 +1,20 @@
 # -*- coding: utf-8 -*-
 import socket
-import MessageReceiver
+from MessageReceiver import MessageReceiver
 import json
 import select
 
 class client:
-    """
-    This is the chat client class
-    """
+
     def __init__(self, host, server_port):
-        """
-        This method is run when creating a new Client object
-        """
         self.host = 'localhost'
         self.server_port = 9998
-        # Set up the socket connection to the server
         self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.messageReciever = MessageReceiver()
+        self.connection.connect((self.host, self.server_port))
+        self.messageReceiver = MessageReceiver(self, self.connection)
         self.run()
-        self.messageReciever.run()
 
     def run(self):
-        self.connection.connect((self.host, self.server_port))
         while True:
             userInput = str(raw_input("Request: "))
             content = str(raw_input("Content: "))

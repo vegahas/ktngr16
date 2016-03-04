@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from threading import Thread
 import select
-import MessageParser
+import time
+from messageParser import MessageParser
 
 
 class MessageReceiver(Thread):
@@ -12,7 +13,10 @@ class MessageReceiver(Thread):
     """
 
     def __init__(self, client, connection):
+        print 'run receiver'
         self.client = client
+        self.connection = connection
+        Thread.__init__(self)
         """
         This method is executed when creating a new MessageReceiver object
         """
@@ -20,10 +24,14 @@ class MessageReceiver(Thread):
         # Flag to run thread as a deamon
         self.daemon = True
         self.messageParser = MessageParser()
+        self.run()
         # TODO: Finish initialization of MessageReceiver
 
     def run(self):
+        print 'runrun'
+        time.sleep(0.1)
         while True:
+            print 'runrun'
             self.connection.setblocking(0)
             ready = select.select([self.connection], [], [], 0.4)
             if ready[0]:

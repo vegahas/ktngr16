@@ -8,18 +8,18 @@ class MessageParser():
             'info': self.parse_info,
             'message': self.parse_message,
             'history': self.parse_history,
-	    # More key:values pairs are needed	
+	    # More key:values pairs are needed
         }
 
     def parse(self, payload):
         payload = json.loads(payload)
         if payload['response'] in self.possible_responses:
-            return payload['timestamp'] + "\n" + self.possible_responses[payload['response']](payload)
+            return '\n' + payload['timestamp'] + "\n" + self.possible_responses[payload['response']](payload) + '\n'
         else:
             return "fail"
 
     def parse_error(self, payload):
-        return payload["content"] 
+        return payload["content"]
 
     def parse_info(self, payload):
         if str(payload["content"]).startswith("["): #Only if 'names' request -> format string
@@ -38,8 +38,7 @@ class MessageParser():
         else:
             msg = ''
             for el in payload["content"]:
-                x = json.loads(el)
-                streng = self.parse(x)
-                msg += streng
+                streng = self.parse(el)
+                msg += streng + '\n'
             return "Chat history: \n"+ msg
-    # Include more methods for handling the different responses... 
+    # Include more methods for handling the different responses...
