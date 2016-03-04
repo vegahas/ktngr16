@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from threading import Thread
 import select
-from client.MessageParser import MessageParser
+import MessageParser
 
 
 class MessageReceiver(Thread):

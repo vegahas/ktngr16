@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import socket
-from MessageReceiver import MessageReceiver
-from MessageParser import MessageParser
+import MessageReceiver
 import json
 import select
 
@@ -24,7 +23,6 @@ class client:
     def run(self):
         self.connection.connect((self.host, self.server_port))
         while True:
-
             userInput = str(raw_input("Request: "))
             content = str(raw_input("Content: "))
             dictObject = {"request":userInput, "content":content}
@@ -48,4 +46,4 @@ if __name__ == '__main__':
 
     No alterations are necessary
     """
-    client = Client('localhost', 9998)
+    client = client('localhost', 9998)
