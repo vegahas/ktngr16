@@ -12,6 +12,7 @@ class MessageParser():
         }
 
     def parse(self, payload):
+        print 'payload:',payload
         payload = json.loads(payload)
         if payload['response'] in self.possible_responses:
             return '\n' + payload['timestamp'] + "\n" + self.possible_responses[payload['response']](payload) + '\n'

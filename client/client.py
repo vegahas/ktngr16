@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import socket
+import time
 from MessageReceiver import MessageReceiver
 import json
 import select
@@ -16,6 +17,7 @@ class client:
 
     def run(self):
         while True:
+            time.sleep(0.2)
             userInput = str(raw_input("Request: "))
             content = str(raw_input("Content: "))
             dictObject = {"request":userInput, "content":content}
