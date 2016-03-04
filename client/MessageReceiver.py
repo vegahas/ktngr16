@@ -29,9 +29,7 @@ class MessageReceiver(Thread):
             ready = select.select([self.connection], [], [], 0.4)
             if ready[0]:
                 data = self.connection.recv(4092)
-                print "recieving data",data
                 if str(data).strip() != '':
                     msg = self.messageParser.parse(data)
-                    print msg
                     self.client.receive_message(msg)
             time.sleep(0.1)
