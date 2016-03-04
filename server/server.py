@@ -2,12 +2,16 @@
 import SocketServer
 import json
 import time
+import re
 
 """
 Variables and functions that must be used by all the ClientHandler objects
 must be written here (e.g. a dictionary for connected clients)
 """
+
 currentUsers = dict()
+help_msg = "login <username> - log in with the given username\nlogout           - log out\nmsg <message>    - send message\nnames            - list users in chat\nhelp             - view help text\n"
+history = []
 
 
 class ClientHandler(SocketServer.BaseRequestHandler):
@@ -17,24 +21,83 @@ class ClientHandler(SocketServer.BaseRequestHandler):
     only connected clients, and not the server itself. If you want to write
     logic for the server, you must write it outside this class
     """
+    username ='%'
 
-    def encode(self, s, r, c):
-        return json.loads({'timestamp':time.ctime(time.time()), 'sender':s, 'response':r, 'content':c})
+    def encode(self,s,r,c):
+        return json.dumps({'timestamp':time.ctime(time.time()), 'sender':s, 'response':r, 'content':c})
+
+    def send(self,s,r,c):
+        payload = self.encode(s,r,c)
+        try:
+            self.connection.send(payload)
+        except:
+            self.cancel()
+
+    def recieve(self):
+        try:
+            package = self.connection.recv(4096)
+            return json.loads(package)
+        except:
+            self.cancel()
+
+    def cancel(self):
+        if self.username in currentUsers:
+            del currentUsers[self.username]
+        self.connection.close()
+        print "Connection closed ..."
+
 
     def verifyUser(self, username):
-        pass
+        if username in currentUsers:
+            return 2
+        if re.match(r'[A-Za-z0-9]{1,}', username):
+            return 1
+        return False
+
 
     def login(self):
-        respons = self.encode(HOST, "info", "Please login (type [help] for information) ...")
-        received_string = self.connection.recv(4096)
-        x = json.dumps(received_string)
-        melding = x['request']
-        if melding.startswith('login '):
-            pass
-        elif melding.startswith('help'):
-            pass
-        else:
-            pass
+        self.send(HOST, "info", "Please login (type [help] for information) ...")
+        while True:
+            package = self.recieve()
+            req = package['request']
+            if req == 'login':
+                try:
+                    username = package['content']
+                    y = self.verifyUser(username)
+                    if y == 1:
+                        c= 'Login successfull ...'
+                        self.send(HOST,'info',c)
+                        return username
+                    elif y == 2:
+                        c = 'Username taken ...'
+                    else:
+                        c= 'Invalid username, use alphanumerical characters ...'
+                    r = 'error'
+                except:
+                    c = 'Invalid syntax ...'
+                    r = 'error'
+            elif req == 'help':
+                c = help_msg
+                r = 'info'
+            else:
+                c = "Invalid command ..."
+                r = 'error'
+            self.send(HOST,r,c)
+
+    def names(self):
+        liste = currentUsers.keys()
+        liste.sort()
+        self.send(HOST,'info',liste)
+
+    def sendMsg(self, msg, username):
+        melding = self.encode(username,'message',msg)
+        history.append(melding)
+        for user in currentUsers:
+            currentUsers[user].send(username,'message',msg)
+
+    def logout(self,username):
+        del currentUsers[username]
+        self.send(HOST,'info','Logout successfull ...')
 
     def handle(self):
         """
@@ -43,15 +106,28 @@ class ClientHandler(SocketServer.BaseRequestHandler):
         self.ip = self.client_address[0]
         self.port = self.client_address[1]
         self.connection = self.request
-
+        loggedin = False
         # Loop that listens for messages from the client
         while True:
-            received_string = self.connection.recv(4096)
-            loggedin = False
             if not loggedin:
-                self.login()
+                self.username = self.login()
                 loggedin = True
-                #legg bruker inn i påloggede enheter
+                currentUsers[self.username] = self
+                self.send(HOST,'history',history)
+            package = self.recieve()
+            req = package['request']
+            if req == 'msg':
+                self.sendMsg(package['content'], self.username)
+            elif req == 'logout':
+                loggedin = False
+                self.logout(self.username)
+            elif req == 'help':
+                self.send(HOST,'info',help_msg)
+            elif req == 'names':
+                self.names()
+            else:
+                self.send(HOST,'error','Invalid command, use [help] for info ...')
+
 
 
 
