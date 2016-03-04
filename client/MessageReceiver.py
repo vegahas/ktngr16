@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 from threading import Thread
+import select
+from client.MessageParser import MessageParser
+
 
 class MessageReceiver(Thread):
     """
@@ -9,15 +12,23 @@ class MessageReceiver(Thread):
     """
 
     def __init__(self, client, connection):
+        self.client = client
         """
         This method is executed when creating a new MessageReceiver object
         """
 
         # Flag to run thread as a deamon
         self.daemon = True
-
+        self.messageParser = MessageParser()
         # TODO: Finish initialization of MessageReceiver
 
     def run(self):
-        # TODO: Make MessageReceiver receive and handle payloads
-        pass
+        while True:
+            self.connection.setblocking(0)
+            ready = select.select([self.connection], [], [], 0.4)
+            if ready[0]:
+                data = self.connection.recv(1024)
+                msg = self.messageParser.parse(data)
+                self.client.receive_message(msg)
+            else:
+                break
