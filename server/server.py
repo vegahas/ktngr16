@@ -50,7 +50,7 @@ class ClientHandler(SocketServer.BaseRequestHandler):
     def verifyUser(self, username):
         if username in currentUsers:
             return 2
-        if re.match(r'[A-Za-z0-9]{1,}', username):
+        if re.match(r'[A-Za-z0-9]', username):
             return 1
         return False
 
