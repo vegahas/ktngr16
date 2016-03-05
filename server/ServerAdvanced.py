@@ -15,7 +15,8 @@ mods = dict()
 rooms = {'lobby': dict(),
          'sofa': dict(),
          'school': dict()}
-help_msg = "login <username> - log in with the given username\n" \
+help_msg = "List of commands\n" \
+           "login <username> - log in with the given username\n" \
            "logout           - log out\n" \
            "msg <message>    - send message\n" \
            "names            - list users in chat\n" \
@@ -25,6 +26,16 @@ help_msg = "login <username> - log in with the given username\n" \
 history = {'lobby': [],
            'sofa': [],
            'school': []}
+mod_msg = "List of moderator commands\n" \
+          "mod mute <user>      - mute user\n" \
+          "mod un_mute <user>   - un-mute user\n" \
+          "mod muted            - list muted users\n" \
+          "mod kick <user>      - kick user\n" \
+          "mod ban <user>       - ban user\n" \
+          "mod un_ban <user>    - un-ban user\n" \
+          "mod banned           - list banned users" \
+          "mod new_room <name>  - create new chat room\n" \
+          "mod del_room <room>  - delete a chat room\n"
 
 
 class ClientHandler(SocketServer.BaseRequestHandler):
@@ -137,15 +148,26 @@ class ClientHandler(SocketServer.BaseRequestHandler):
     def handle_mod(self, content):
         if self.username in mods:
             if content == 'help':
-                return 'mute <user>, un_mute <user>, kick <user>, ban <user>, un_ban <user>\n' \
-                       'new_room <name>, del_room <room>, add <user>'
+                return mod_msg
+            elif content == 'muted':
+                x = muted.keys()
+                x.sort()
+                return x
+            elif content == 'banned':
+                x = banned.keys()
+                x.sort()
+                return x
             try:
                 x = content.split(' ', 1)
                 cmd = x[0]
                 usr = x[1]
             except:
                 return 'Fail'
-            if (cmd == 'new_room') and (self.verify_user(usr) == 1):
+            if cmd == 'un_ban':
+                if usr in banned:
+                    del banned[usr]
+                    return 'Success'
+            elif (cmd == 'new_room') and (self.verify_user(usr) == 1):
                 rooms[usr] = dict()
                 history[usr] = []
                 return 'Success'
@@ -162,7 +184,7 @@ class ClientHandler(SocketServer.BaseRequestHandler):
             elif (usr not in mods) and (usr in currentUsers):
                 if cmd == 'kick':
                     currentUsers[usr].send(HOST, 'info', 'You have been kicked!')
-                    currentUsers[usr].cancel()
+                    currentUsers[usr].handle_logout()
                     return 'Success'
                 elif cmd == 'mute':
                     if usr not in muted:
@@ -173,15 +195,13 @@ class ClientHandler(SocketServer.BaseRequestHandler):
                         del muted[usr]
                         return 'Success'
                 elif cmd == 'ban':
-                    banned[currentUsers[usr].ip] = None
+                    banned[usr] = currentUsers[usr].ip
+                    currentUsers[usr].send(HOST, 'info', 'You have been banned!')
                     currentUsers[usr].cancel()
                     return 'Success'
-                elif cmd == 'un_ban':
-                    if currentUsers[usr].ip in banned:
-                        del banned[currentUsers[usr].ip]
-                        return 'Success'
                 elif cmd == 'add':
                     mods[usr] = None
+                    currentUsers[usr].send(HOST, 'info', 'You are now a moderator. Type [mod help] for commands ...')
                     return 'Success'
         elif (content == self.p) and not bool(mods):
             mods[self.username] = None
@@ -209,7 +229,7 @@ class ClientHandler(SocketServer.BaseRequestHandler):
         self.ip = self.client_address[0]
         self.port = self.client_address[1]
         self.connection = self.request
-        if self.ip in banned:
+        if self.ip in banned.values():
             self.cancel()
         # Loop that listens for messages from the client
         while True:
