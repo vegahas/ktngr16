@@ -155,12 +155,13 @@ class ClientHandler(SocketServer.BaseRequestHandler):
                         a = currentUsers[i]
                         rooms['lobby'][i] = a
                         a.current_room = 'lobby'
-                        a.send(HOST, 'info', 'Room deleted, you are in: ' + self.current_room)
+                        a.send(HOST, 'info', 'Room deleted, you are in: ' + a.current_room)
                     del rooms[usr]
                     del history[usr]
                     return 'Success'
             elif (usr not in mods) and (usr in currentUsers):
                 if cmd == 'kick':
+                    currentUsers[usr].send(HOST, 'info', 'You have been kicked!')
                     currentUsers[usr].cancel()
                     return 'Success'
                 elif cmd == 'mute':
