@@ -8,11 +8,13 @@ Variables and functions that must be used by all the ClientHandler objects
 must be written here (e.g. a dictionary for connected clients)
 """
 
+main_room = 'lobby'
+admin = dict()
 currentUsers = dict()
 muted = dict()
 banned = dict()
 mods = dict()
-rooms = {'lobby': dict(),
+rooms = {main_room: dict(),
          'sofa': dict(),
          'school': dict()}
 help_msg = "\nList of commands\n" \
@@ -24,7 +26,8 @@ help_msg = "\nList of commands\n" \
            "room <name>      - change to chosen room\n" \
            "rooms            - list all rooms\n" \
            "help             - view help text\n"
-history = {'lobby': [],
+history = {main_room: [],
+           'moderators': [],
            'sofa': [],
            'school': []}
 mod_msg = "\nList of moderator commands\n" \
@@ -39,6 +42,9 @@ mod_msg = "\nList of moderator commands\n" \
           "mod banned           - list banned users" \
           "mod new_room <name>  - create new chat room\n" \
           "mod del_room <room>  - delete a chat room\n"
+adm_msg = "\nList of administrator commands\n" \
+          "adm add <username>   - make user a moderator\n" \
+          "adm del <username>   - remove a moderator\n"
 
 
 class ClientHandler(SocketServer.BaseRequestHandler):
@@ -49,9 +55,7 @@ class ClientHandler(SocketServer.BaseRequestHandler):
     logic for the server, you must write it outside this class
     """
     username = '%'
-    current_room = 'lobby'
-    logged_in = False
-    p = 'accept'
+    current_room = main_room
 
     def encode(self, s, r, c):
         return json.dumps({'timestamp': time.ctime(time.time()), 'sender': s, 'response': r, 'content': c})
@@ -82,6 +86,8 @@ class ClientHandler(SocketServer.BaseRequestHandler):
             del mods[self.username]
         if self.username in rooms[self.current_room]:
             del rooms[self.current_room][self.username]
+        if self.username in admin:
+            del admin[self.username]
 
     def verify_user(self, username):
         if (username in currentUsers) or (username in rooms):
@@ -95,10 +101,39 @@ class ClientHandler(SocketServer.BaseRequestHandler):
     def initialize(self, username):
         c = 'Login successful ...\nYour are in: ' + self.current_room
         self.username = username
-        self.logged_in = True
         self.send(HOST, 'info', c)
         currentUsers[self.username] = self
-        rooms['lobby'][self.username] = self
+        rooms[self.current_room][self.username] = self
+
+    def handle_adm(self, content):
+        if (content == 'accept') and (not bool(admin)):
+            if not bool(mods):
+                admin[self.username] = None
+                mods[self.username] = None
+                return 'Success'
+            elif self.username in mods:
+                admin[self.username] = None
+                return 'Success'
+        elif self.username in admin:
+            if content == 'help':
+                self.send(HOST, 'info', adm_msg)
+                return 'Success'
+            else:
+                try:
+                    x = content.split(' ', 1)
+                    cmd = x[0]
+                    usr = x[1]
+                except:
+                    return 'Fail'
+                if (cmd == 'add') and (usr in currentUsers) and (usr not in mods):
+                    mods[usr] = None
+                    currentUsers[usr].send(HOST, 'info', 'You are now a moderator. Type [mod help] for commands ...')
+                    return 'Success'
+                elif (cmd == 'del') and (usr in currentUsers) and (usr in mods) and (usr != self.username):
+                    del mods[usr]
+                    currentUsers[usr].send(HOST, 'info', 'You are no longer a moderator ...')
+                    return 'Success'
+        return 'Fail'
 
     def handle_login(self):
         self.send(HOST, "info", "Please login (type [help] for information) ...")
@@ -132,23 +167,21 @@ class ClientHandler(SocketServer.BaseRequestHandler):
         self.send(HOST, 'history', history[self.current_room])
 
     def handle_rooms(self):
-        x = 'Room\tUsers\n'
+        x = '\nRoom\tUsers\n'
         i = rooms.keys()
         i.sort()
         for j in i:
-            usrs = rooms[j].keys()
-            usrs.sort()
-            y = ''
-            for u in usrs:
-                y += u + ', '
-            y = y[0:len(y)-2]
+            y = self.handle_list(rooms[j])
             x += j + '\t' + y + '\n'
         self.send(HOST, 'info', x)
 
     def handle_list(self, dictionary):
         x = dictionary.keys()
         x.sort()
-        self.send(HOST, 'info', x)
+        a = ''
+        for element in x:
+            a += element + ', '
+        return a[0:len(a)-2]
 
     def handle_pm(self, content):
         try:
@@ -179,21 +212,13 @@ class ClientHandler(SocketServer.BaseRequestHandler):
             if content == 'help':
                 return mod_msg
             elif content == 'muted':
-                x = muted.keys()
-                x.sort()
-                return x
+                return 'Muted: ' + self.handle_list(muted)
             elif content == 'banned':
-                x = banned.keys()
-                x.sort()
-                return x
+                return 'Banned: ' + self.handle_list(banned)
             elif content == 'mods':
-                x = mods.keys()
-                x.sort()
-                return x
+                return 'Moderators: ' + self.handle_list(mods)
             elif content == 'users':
-                x = currentUsers.keys()
-                x.sort()
-                return x
+                return 'Online users: ' + self.handle_list(currentUsers)
             try:
                 x = content.split(' ', 1)
                 cmd = x[0]
@@ -209,11 +234,11 @@ class ClientHandler(SocketServer.BaseRequestHandler):
                 history[usr] = []
                 return 'Success'
             elif cmd == 'del_room':
-                if (usr in rooms) and (usr != 'lobby'):
+                if (usr in rooms) and (usr != main_room):
                     for i in rooms[usr]:
                         a = currentUsers[i]
-                        rooms['lobby'][i] = a
-                        a.current_room = 'lobby'
+                        rooms[main_room][i] = a
+                        a.current_room = main_room
                         a.send(HOST, 'info', 'Room deleted, you are in: ' + a.current_room)
                     del rooms[usr]
                     del history[usr]
@@ -236,13 +261,6 @@ class ClientHandler(SocketServer.BaseRequestHandler):
                     currentUsers[usr].send(HOST, 'info', 'You have been banned!')
                     currentUsers[usr].cancel()
                     return 'Success'
-                elif cmd == 'add':
-                    mods[usr] = None
-                    currentUsers[usr].send(HOST, 'info', 'You are now a moderator. Type [mod help] for commands ...')
-                    return 'Success'
-        elif (content == self.p) and not bool(mods):
-            mods[self.username] = None
-            return 'Success'
         return 'Fail'
 
     def handle_msg(self, msg):
@@ -256,8 +274,8 @@ class ClientHandler(SocketServer.BaseRequestHandler):
 
     def handle_logout(self):
         self.remove()
-        self.logged_in = False
         self.send(HOST, 'info', 'Logout successful ...')
+        self.handle_login()
 
     def handle(self):
         """
@@ -268,10 +286,8 @@ class ClientHandler(SocketServer.BaseRequestHandler):
         self.connection = self.request
         if self.ip in banned.values():
             self.cancel()
-        # Loop that listens for messages from the client
+        self.handle_login()
         while True:
-            if not self.logged_in:
-                self.handle_login()
             package = self.receive()
             req = package['request']
             if req == 'msg':
@@ -281,13 +297,15 @@ class ClientHandler(SocketServer.BaseRequestHandler):
             elif req == 'help':
                 self.send(HOST, 'info', help_msg)
             elif req == 'names':
-                self.handle_list(rooms[self.current_room])
+                self.send(HOST, 'info', 'Users in ' + self.current_room + ': ' + self.handle_list(rooms[self.current_room]))
             elif req == 'mod':
                 self.send(HOST, 'info', self.handle_mod(package['content']))
             elif req == 'room':
                 self.handle_room(package['content'])
             elif req == 'rooms':
                 self.handle_rooms()
+            elif req == 'adm':
+                self.send(HOST, 'info', self.handle_adm(package['content']))
             elif req == 'pm':
                 self.handle_pm(package['content'])
             else:
@@ -311,7 +329,7 @@ if __name__ == "__main__":
 
     No alterations are necessary
     """
-    HOST, PORT = '10.20.78.29', 9998
+    HOST, PORT = 'localhost', 9998
     print 'Server running...'
 
     # Set up and initiate the TCP server
