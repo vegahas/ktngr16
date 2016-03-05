@@ -15,10 +15,11 @@ mods = dict()
 rooms = {'lobby': dict(),
          'sofa': dict(),
          'school': dict()}
-help_msg = "List of commands\n" \
+help_msg = "\nList of commands\n" \
            "login <username> - log in with the given username\n" \
            "logout           - log out\n" \
            "msg <message>    - send message\n" \
+           "pm <user> <msg>  - send private message to user\n" \
            "names            - list users in chat\n" \
            "room <name>      - change to chosen room\n" \
            "rooms            - list all rooms\n" \
@@ -26,7 +27,8 @@ help_msg = "List of commands\n" \
 history = {'lobby': [],
            'sofa': [],
            'school': []}
-mod_msg = "List of moderator commands\n" \
+mod_msg = "\nList of moderator commands\n" \
+          "mod mods\n" \
           "mod mute <user>      - mute user\n" \
           "mod un_mute <user>   - un-mute user\n" \
           "mod muted            - list muted users\n" \
@@ -133,6 +135,18 @@ class ClientHandler(SocketServer.BaseRequestHandler):
         x.sort()
         self.send(HOST, 'info', x)
 
+    def handle_pm(self,content):
+        try:
+            x = content.split(' ',1)
+            usr = x[0]
+            if usr in currentUsers:
+                currentUsers[usr].send(self.username, 'message', 'Private message: ' + x[1])
+                self.send(self.username, 'message', 'Pm to ' + usr + ' : ' + x[1])
+            else:
+                self.send(HOST, 'error', 'User not online ...')
+        except:
+            self.send(HOST, 'error', 'Invalid syntax. Correct: [pm <username> <message>] ...')
+
     def handle_room(self, content):
         if content in rooms:
             if self.username not in rooms[content]:
@@ -155,6 +169,10 @@ class ClientHandler(SocketServer.BaseRequestHandler):
                 return x
             elif content == 'banned':
                 x = banned.keys()
+                x.sort()
+                return x
+            elif content == 'mods':
+                x = mods.keys()
                 x.sort()
                 return x
             try:
@@ -251,6 +269,8 @@ class ClientHandler(SocketServer.BaseRequestHandler):
                 self.handle_room(package['content'])
             elif req == 'rooms':
                 self.handle_list(rooms)
+            elif req == 'pm':
+                self.handle_pm(package['content'])
             else:
                 self.send(HOST, 'error', 'Invalid command, use [help] for info ...')
 
@@ -272,7 +292,7 @@ if __name__ == "__main__":
 
     No alterations are necessary
     """
-    HOST, PORT = 'localhost', 9998
+    HOST, PORT = '10.20.78.29', 9998
     print 'Server running...'
 
     # Set up and initiate the TCP server

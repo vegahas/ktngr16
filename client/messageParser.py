@@ -26,7 +26,7 @@ class MessageParser():
             msg = ''
             for element in payload["content"]:
                 msg += element + ', '
-            return "Users: " + msg[0:len(msg)-3]
+            return "Users: " + msg[0:len(msg)-2]
         return payload["content"]
 
     def parse_message(self, payload):
