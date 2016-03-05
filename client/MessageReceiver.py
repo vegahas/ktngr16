@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from threading import Thread
 import select
-import threading
 import time
 from messageParser import MessageParser
 
@@ -18,7 +17,7 @@ class MessageReceiver(Thread):
         self.client = client
         self.connection = connection
         Thread.__init__(self)
-        # Flag to run thread as a deamon
+        # Flag to run thread as a daemon
         self.daemon = True
         self.messageParser = MessageParser()
         self.start()

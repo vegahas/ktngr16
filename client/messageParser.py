@@ -1,5 +1,6 @@
 import json
 
+
 class MessageParser():
     def __init__(self):
 
@@ -8,7 +9,6 @@ class MessageParser():
             'info': self.parse_info,
             'message': self.parse_message,
             'history': self.parse_history,
-	    # More key:values pairs are needed
         }
 
     def parse(self, payload):
@@ -22,7 +22,7 @@ class MessageParser():
         return payload["content"]
 
     def parse_info(self, payload):
-        if str(payload["content"]).startswith("["): #Only if 'names' request -> format string
+        if str(payload["content"]).startswith("["):  # Only if 'names' request -> format string
             msg = ''
             for element in payload["content"]:
                 msg += element + ', '
@@ -30,7 +30,7 @@ class MessageParser():
         return payload["content"]
 
     def parse_message(self, payload):
-        return payload['sender'] + ": " + payload["content"] #skjer ingenting ? - ingen output
+        return payload['sender'] + ": " + payload["content"]  # skjer ingenting ? - ingen output
 
     def parse_history(self, payload):
         if payload["content"] == []:
@@ -40,5 +40,4 @@ class MessageParser():
             for el in payload["content"]:
                 streng = self.parse(el)
                 msg += streng + '\n'
-            return "Chat history: \n"+ msg
-    # Include more methods for handling the different responses...
+            return "Chat history: \n" + msg
