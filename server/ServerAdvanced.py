@@ -137,7 +137,7 @@ class ClientHandler(SocketServer.BaseRequestHandler):
 
     def handle_pm(self,content):
         try:
-            x = content.split(' ',1)
+            x = content.split(' ', 1)
             usr = x[0]
             if usr in currentUsers:
                 currentUsers[usr].send(self.username, 'message', 'Private message: ' + x[1])
