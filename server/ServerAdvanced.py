@@ -29,6 +29,7 @@ history = {'lobby': [],
            'school': []}
 mod_msg = "\nList of moderator commands\n" \
           "mod mods\n" \
+          "mod users            - list all users\n" \
           "mod mute <user>      - mute user\n" \
           "mod un_mute <user>   - un-mute user\n" \
           "mod muted            - list muted users\n" \
@@ -130,12 +131,26 @@ class ClientHandler(SocketServer.BaseRequestHandler):
             self.send(HOST, r, c)
         self.send(HOST, 'history', history[self.current_room])
 
+    def handle_rooms(self):
+        x = 'Room\tUsers\n'
+        i = rooms.keys()
+        i.sort()
+        for j in i:
+            usrs = rooms[j].keys()
+            usrs.sort()
+            y = ''
+            for u in usrs:
+                y += u + ', '
+            y = y[0:len(y)-2]
+            x += j + '\t' + y + '\n'
+        self.send(HOST, 'info', x)
+
     def handle_list(self, dictionary):
         x = dictionary.keys()
         x.sort()
         self.send(HOST, 'info', x)
 
-    def handle_pm(self,content):
+    def handle_pm(self, content):
         try:
             x = content.split(' ', 1)
             usr = x[0]
@@ -173,6 +188,10 @@ class ClientHandler(SocketServer.BaseRequestHandler):
                 return x
             elif content == 'mods':
                 x = mods.keys()
+                x.sort()
+                return x
+            elif content == 'users':
+                x = currentUsers.keys()
                 x.sort()
                 return x
             try:
@@ -268,7 +287,7 @@ class ClientHandler(SocketServer.BaseRequestHandler):
             elif req == 'room':
                 self.handle_room(package['content'])
             elif req == 'rooms':
-                self.handle_list(rooms)
+                self.handle_rooms()
             elif req == 'pm':
                 self.handle_pm(package['content'])
             else:
